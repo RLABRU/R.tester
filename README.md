@@ -1,2 +1,2 @@
 # R.tester
-R.tester scripts library
+R.tester's scripts library
