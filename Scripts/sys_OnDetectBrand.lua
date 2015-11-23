@@ -1,4 +1,4 @@
---[[ Vendor, family and generation clarification 
+--[[ Vendor, family and generation clarification
   ]]
 
 Device = {}
