@@ -3,7 +3,6 @@
 
 Device = {}
 LOut = {}
-Device.DEBUG = nil
 
 -- Fill in the tag table
 for Tag, Value in string.gmatch(DeviceInfoForBrand,'([^\n:]+):([^\n]+)') do
@@ -15,7 +14,7 @@ LibFolder = Device.BASE_DIR .. 'Scripts/lib/'
 
 -- Set debug output
 if Device.DEBUG then 
-	io.output(Device.BASE_DIR .. 'debug_out_OnDetectBrand.txt') 
+	io.output(Device.BASE_DIR .. 'Logs/DebugOut_sys_OnDetectBrand.txt') 
 end
 
 function DebugOut(String)
@@ -139,13 +138,17 @@ iup.Message('YourApp','Finished Successfully!')
 
 ]]
 
-
-
+-- Check for the case, when no such brand in the table
+if Brand2ID[Device.MFGBRAND] then
+	Device.BRAND_ID = Brand2ID[Device.MFGBRAND]
+else
+	Device.BRAND_ID = 0
+end
 
 --========================================================================================================================================
 LOut.RMODEL = Device.RMODEL
 
-LOut.BRAND_ID = Brand2ID[Device.MFGBRAND]
+LOut.BRAND_ID = Device.BRAND_ID
 LOut.FAMILY_ID = Device.FAMILY_ID
 LOut.FAMILY_GEN_ID = Device.FAMILY_GEN_ID
 
@@ -153,4 +156,4 @@ LOut.MFGBRAND = Device.MFGBRAND
 LOut.FAMILY = Device.FAMILY
 LOut.FAMILY_GEN = Device.FAMILY_GEN
 
-return Brand2ID[Device.MFGBRAND] .. ',' .. Device.FAMILY_ID .. ',' .. Device.FAMILY_GEN_ID
+return Device.BRAND_ID .. ',' .. Device.FAMILY_ID .. ',' .. Device.FAMILY_GEN_ID

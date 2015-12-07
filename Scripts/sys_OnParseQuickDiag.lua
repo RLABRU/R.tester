@@ -9,10 +9,8 @@ Device.Diag = {} -- Registered rights functions
 Device.Bad = {} -- List of mailfunction types
 Device.RegList = {} -- List of registered rights functions
 
-
-Device.DEBUG = 1
-Device.NOTDETECTED = 1
-
+Device.NOTDETECTED = 'SETTEDMANUALLY'
+Device.DEBUG  = 'SETTEDMANUALLY'
 
 function AddExplanation(NewExplanation) Explanation = Explanation .. ' • ' .. NewExplanation .. '\n' end
 function AddDebugInfo(NewDebugInfo) if Device.DEBUG then DebugInfo = DebugInfo .. NewDebugInfo .. '\n' end end
@@ -46,8 +44,9 @@ for Key, Value in string.gmatch(QuickDiagResult,'([^\n:]+):([^\n]+)') do
 	else
 		Device[Key] = Value
 	end
-	AddDebugInfo(Key .. '=>' .. Value)
 end
+
+AddDebugInfo(QuickDiagResult)
 
 if Device.STAGE_ERROR then return Device.STAGE_ERROR end
 
@@ -171,6 +170,10 @@ for DiagResultName in pairs(Device.Bad) do
 end
 
 ResultString = ResultString .. Diagnosis .. '\n<===<EXPLANATION>===>' .. Explanation
+
 if Device.DEBUG then ResultString = '***DEBUG MODE***\n' .. ResultString .. '\n###DEBUG INFO###\n' .. DebugInfo end
+
+if Device.DBG_CONTAINER then ResultString = '+++CONTEINER VIEWING MODE+++\n' .. ResultString .. '\n###STORED INFORMATION###\n' .. QuickDiagResult end
+
 return ResultString
 
