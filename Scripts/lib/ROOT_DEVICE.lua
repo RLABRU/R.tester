@@ -23,13 +23,13 @@ function Device.MalfunctionClass:Verdict()
 	if self.HighProbabilityCounter ~= 0 or self.ProbabilityCounter ~= 0 or self.LowProbabilityCounter ~= 0 then
 		local Verdict = ""
 		if self.HighProbabilityCounter ~= 0 then 
-			Verdict = Verdict .. ' ' .. self.HighProbabilityCounter .. ' sign(s) point to a high probability of ' .. self.MalfunctionName .. '.\n'
+			Verdict = Verdict .. ' ' .. self.HighProbabilityCounter .. ' ' .. rl.Loc('sign(s) point to a high probability of') .. ' ' .. rl.Loc(self.MalfunctionName) .. '.\n'
 		end
 		if self.ProbabilityCounter ~= 0 then 
-			Verdict = Verdict .. ' ' .. self.ProbabilityCounter .. ' sign(s) point to a probability of ' .. self.MalfunctionName .. '.\n'
+			Verdict = Verdict .. ' ' .. self.ProbabilityCounter .. ' ' .. rl.Loc('sign(s) point to a probability of') .. ' ' .. rl.Loc(self.MalfunctionName) .. '.\n'
 		end
 		if self.LowProbabilityCounter ~= 0 then 
-			Verdict = Verdict .. ' ' .. self.LowProbabilityCounter .. ' sign(s) point to a low probability of ' .. self.MalfunctionName .. '.\n'
+			Verdict = Verdict .. ' ' .. self.LowProbabilityCounter .. ' ' .. rl.Loc('sign(s) point to a low probability of') .. ' ' .. rl.Loc(self.MalfunctionName) .. '.\n'
 		end
 		return Verdict
 	else return nil end       

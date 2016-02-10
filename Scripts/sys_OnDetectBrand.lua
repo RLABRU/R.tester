@@ -26,7 +26,6 @@ end
 DebugOut(DeviceInfoForBrand)
 
 
-
 -- Load external chunk function
 function IncludeChunk(FileName)
 	dofile(LibFolder .. FileName)
@@ -40,8 +39,8 @@ IncludeChunk('table_Brand2ID.lua')
 Device.FAMILY_ID = Device.FAMILY_ID or 0
 Device.FAMILY_GEN_ID = Device.FAMILY_GEN_ID or 0
 
-Device.FAMILY = Device.FAMILY or 'GNRCFAMILY'
-Device.FAMILY_GEN = Device.FAMILY_GEN or 'GNRCGEN'
+Device.FAMILY = Device.FAMILY or 'GNRC'
+Device.FAMILY_GEN = Device.FAMILY_GEN or 'GNRC'
 
 -- Refining the model name
 do
@@ -92,7 +91,7 @@ if Device.MFGBRAND == 'SAMSUNG' then
 		IncludeChunk('table_Family2ID_SAMSUNG.lua')
 		Device.FAMILY_ID = Family2ID[Device.FAMILY]
 	end	
-	
+
 elseif Device.MFGBRAND == 'SEAGATE' then
 	
 elseif Device.MFGBRAND == 'HGST' then
@@ -109,7 +108,6 @@ elseif Device.MFGBRAND == 'WDC' then
 elseif Device.MFGBRAND == 'TOSHIBA' then
 
 else end
-
 
 --===================GENERATION DETECTION==========================================================================================
 --[[

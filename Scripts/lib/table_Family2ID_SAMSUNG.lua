@@ -1,6 +1,6 @@
 Family2ID = {}
 
-Family2ID.GNRCFAMILY		= 0
+Family2ID.GNRC		= 0
 
 Family2ID.M6		= 1
 Family2ID.M8		= 2
