@@ -14,42 +14,43 @@ Device.Bad.Scratched = Device.MalfunctionClass:new('scratched surface')
 -- Rules for processing test results =================================================================================================
 
 Device.Diag[RegFunction('3D_READ', LibInfo)] = function ()
--- Heads 	
-	if  (Device.TestReadOD.Status and Device.TestReadOD.Status == FAIL and Device.TestReadOD.ErrCount > 1)
-	and (Device.TestReadMD.Status and Device.TestReadMD.Status == FAIL and Device.TestReadMD.ErrCount > 1)
-	and (Device.TestReadID.Status and Device.TestReadID.Status == FAIL and Device.TestReadID.ErrCount > 1)
+
+-- Heads ----------------------------------	
+	if  (Device.TestReadOD and Device.TestReadOD.Status == FAIL and Device.TestReadOD.ErrCount > 1)
+	and (Device.TestReadMD and Device.TestReadMD.Status == FAIL and Device.TestReadMD.ErrCount > 1)
+	and (Device.TestReadID and Device.TestReadID.Status == FAIL and Device.TestReadID.ErrCount > 1)
 	then 
 		Device.Bad.Heads:HighProbability()
 		AddExplanation('A large number of bad blocks at the beginning, middle and end of the drive with a high degree of probability indicate a malfunction of one of the heads.')
 	end
    
-   if  (Device.TestReadOD.Status and Device.TestReadOD.Status == FAIL and Device.TestReadOD.ErrCount == 1)
-   and (Device.TestReadMD.Status and Device.TestReadMD.Status == FAIL and Device.TestReadMD.ErrCount == 1)
-   and (Device.TestReadID.Status and Device.TestReadID.Status == FAIL and Device.TestReadID.ErrCount == 1)
+   if  (Device.TestReadOD and Device.TestReadOD.Status == FAIL and Device.TestReadOD.ErrCount == 1)
+   and (Device.TestReadMD and Device.TestReadMD.Status == FAIL and Device.TestReadMD.ErrCount == 1)
+   and (Device.TestReadID and Device.TestReadID.Status == FAIL and Device.TestReadID.ErrCount == 1)
    then 
        Device.Bad.Heads:Probability()
        AddExplanation('Presence of bad blocks at the beginning, middle and end of the drive indicate a malfunction of one of the heads.')
    end
--- ÂÂ   
-   if  (Device.TestReadOD.Status and Device.TestReadOD.Status == FAIL and Device.TestReadOD.ErrCount > 1)
-   or (Device.TestReadMD.Status and Device.TestReadMD.Status == FAIL and Device.TestReadMD.ErrCount > 1)
-   or (Device.TestReadID.Status and Device.TestReadID.Status == FAIL and Device.TestReadID.ErrCount > 1)
+-- ÂÂ ----------------------------------   
+   if (Device.TestReadOD and Device.TestReadOD.Status == FAIL and Device.TestReadOD.ErrCount > 1)
+   or (Device.TestReadMD and Device.TestReadMD.Status == FAIL and Device.TestReadMD.ErrCount > 1)
+   or (Device.TestReadID and Device.TestReadID.Status == FAIL and Device.TestReadID.ErrCount > 1)
    then 
        Device.Bad.BB:HighProbability()
        AddExplanation('In the process of testing revealed a large number of sectors that are read incorrectly.')
    end
    
-   if  (Device.TestReadOD.Status and Device.TestReadOD.Status == FAIL and Device.TestReadOD.ErrCount == 1)
-   or (Device.TestReadMD.Status and Device.TestReadMD.Status == FAIL and Device.TestReadMD.ErrCount == 1)
-   or (Device.TestReadID.Status and Device.TestReadID.Status == FAIL and Device.TestReadID.ErrCount == 1)
+   if (Device.TestReadOD and Device.TestReadOD.Status == FAIL and Device.TestReadOD.ErrCount == 1)
+   or (Device.TestReadMD and Device.TestReadMD.Status == FAIL and Device.TestReadMD.ErrCount == 1)
+   or (Device.TestReadID and Device.TestReadID.Status == FAIL and Device.TestReadID.ErrCount == 1)
    then 
        Device.Bad.BB:Probability()
        AddExplanation('In the process of testing revealed sectors that are read incorrectly.')
    end
    
-   if  (Device.TestReadOD.Status and Device.TestReadOD.Status == PASS and Device.TestReadOD.ErrCount > 0)
-   or (Device.TestReadMD.Status and Device.TestReadMD.Status == PASS and Device.TestReadMD.ErrCount > 0)
-   or (Device.TestReadID.Status and Device.TestReadID.Status == PASS and Device.TestReadID.ErrCount > 0)
+   if (Device.TestReadOD and Device.TestReadOD.Status == PASS and Device.TestReadOD.ErrCount > 0)
+   or (Device.TestReadMD and Device.TestReadMD.Status == PASS and Device.TestReadMD.ErrCount > 0)
+   or (Device.TestReadID and Device.TestReadID.Status == PASS and Device.TestReadID.ErrCount > 0)
    then 
        Device.Bad.BB:Probability()
        AddExplanation('In the process of testing revealed sectors that are read incorrectly.')
@@ -65,14 +66,37 @@ end
 
 -- Rules for the S.M.A.R.T analisys. =================================================================================================
 
--- Malfunctions
+-- Malfunctions-----------------------------------------------------------------------------------------------------------------------------------------
 Device.Diag[RegFunction('SMART_DIAGNOSIS', LibInfo)] = function ()
-
-   
+-- #5 and 198
+	if Attr5 and ( Attr5.Raw1 > 499 or Attr5.Value < 26 ) 
+	or Attr198 and ( Attr5.Raw198 > 499 or Attr198.Value < 26 )	
+	then 
+       Device.Bad.BB:Probability()
+       AddExplanation('S.M.A.R.T. attributes analysis indicates the likelihood of the presence of unreadable sectors.')
+	end
+-- #184
+	if Device.Attr184 and Device.Attr184.Raw1 > 0 
+	then
+       Device.Bad.PCB:LowProbability()
+       AddExplanation('A non-zero value of the attribute 184 may indicate a problem with the electronics board or controller, or cable or contact, or to strong electromagnetic interference.')	
+	end
+-- #199	
+	if Device.Attr199 and Device.Attr199.Raw1 > 0 
+	then
+       Device.Bad.PCB:LowProbability()
+       AddExplanation('A non-zero value of the attribute 199 may be a problem. This is either a cable or a buffer memory or firmware error.')	
+	end
 end
 
---Warnings
+--Warnings-----------------------------------------------------------------------------------------------------------------------------------------
 Device.Diag[RegFunction('SMART_WARNINGS', LibInfo)] = function ()
+--#4
+	if Device.Attr4 and Device.Attr4.Raw1 > 10000 
+	then
+       AddWarning('SMART attribute #4 value is too high.')
+	end
+
 
    
 end

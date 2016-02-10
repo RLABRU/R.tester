@@ -197,8 +197,9 @@ if Device.TEST_RANDOM_READ then
 	end
 end
 
-function DDDSplit(TestName, TagVal, Table)
+function DDDSplit(TestName, TagVal)
 	if TagVal then
+		local Table = {}
 		Table.Status, Table.StartLBA, Table.StopLBA, Table.BlockSize, Table.ErrCount, Table.ErrCode, Table.TestTime = string.match(TagVal,'^(%w+),(%d+),(%d+),(%d+),(%d+),(%w+),(%d+)$')
 		if Table.Status then 
 			tonumber(Table.StartLBA); tonumber(Table.StopLBA); tonumber(Table.BlockSize); tonumber(Table.ErrCount); tonumber(Table.TestTime)
@@ -212,14 +213,14 @@ function DDDSplit(TestName, TagVal, Table)
 			if SCSISenseInfo then AddDebugInfo('Last SCSI Sense code decoding:   ' .. SCSISenseInfo)
 			else AddDebugInfo('ERROR during last error code decoding:   ' .. ErrorMessage) end
 		end
+	return Table
 	end
 end 
-Device.TestReadOD = {}
-DDDSplit('TestReadOD', Device.TEST_READ_OD, Device.TestReadOD)
-Device.TestReadMD = {}
-DDDSplit('TestReadMD', Device.TEST_READ_MD, Device.TestReadMD)
-Device.TestReadID = {}
-DDDSplit('TestReadID', Device.TEST_READ_ID, Device.TestReadID)
+
+Device.TestReadOD = DDDSplit('TestReadOD', Device.TEST_READ_OD)
+Device.TestReadMD = DDDSplit('TestReadMD', Device.TEST_READ_MD)
+Device.TestReadID = DDDSplit('TestReadID', Device.TEST_READ_ID)
+
 AddDebugInfo('\n')
 
 
