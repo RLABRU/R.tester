@@ -1,225 +1,226 @@
 
 rl = require('rl')
 
-DebugInfo = ''
-Diagnosis = '\n'
-Explanation = '\n'
-Warning = '\n'
-ResultString = ''
+debugInfo = ''
+diagnosis = '\n'
+explanation = '\n'
+warning = '\n'
+resultString = ''
 
-Device = {}
-Device.Diag = {} -- Registered rights functions
-Device.Bad = {} -- List of mailfunction types
-Device.RegList = {} -- List of registered rights functions
+device = {}
+device.diag = {} -- Registered rights functions
+device.fail = {} -- List of mailfunction types
+device.regRulesList = {} -- List of registered rights functions
 
-function AddExplanation(NewExplanation) Explanation = Explanation .. ' • ' .. rl.Loc(NewExplanation) .. '\n' end
+function AddExplanation(newExplanation) explanation = explanation .. ' • ' .. rl.Loc(newExplanation) .. '\n' end
 
-function AddWarning(NewWarning) Warning = Warning .. ' ! ' .. rl.Loc(NewWarning) .. '\n' end
+function AddWarning(newWarning) warning = warning .. ' ! ' .. rl.Loc(newWarning) .. '\n' end
 
-function AddDebugInfo(NewDebugInfo) 
-	if Device.DEBUG then 
-		if NewDebugInfo then
-			DebugInfo = DebugInfo .. NewDebugInfo .. '\n'
+function AddDebugInfo(newDebugInfo) 
+	if device.DEBUG then 
+		if newDebugInfo then
+			debugInfo = debugInfo .. newDebugInfo .. '\n'
 		else
-			DebugInfo = DebugInfo .. '\n'
+			debugInfo = debugInfo .. '\n'
 		end
 	end 
 end
 
-function IncludeParentLib(FileName)	dofile(LibFolder .. FileName) end
+function IncludeParentLib(fileName)	dofile(libFolder .. fileName) end
 
 -- Diagnostic functions registration
-function RegFunction(FunctionName, LibInfo) 
-	if Device.RegList[FunctionName] then
-		AddDebugInfo('Loaded function ' .. FunctionName .. ' from library ' .. LibInfo .. ' function from ' .. Device.RegList[FunctionName] .. ' overloaded.')
-		Device.RegList[FunctionName] = LibInfo
+function RegFunction(functionName, libInfo) 
+	if device.regRulesList[functionName] then
+		AddDebugInfo('Loaded function ' .. functionName .. ' from library ' .. libInfo .. ' function from ' .. device.regRulesList[functionName] .. ' overloaded.')
 	else
-		AddDebugInfo('Loaded function ' .. FunctionName .. ' from library ' .. LibInfo .. '.')
-		Device.RegList[FunctionName] = LibInfo
+		AddDebugInfo('Loaded function ' .. functionName .. ' from library ' .. libInfo .. '.')
 	end
-	return FunctionName
+	device.regRulesList[functionName] = libInfo
+	return functionName
 end
 
 -- SCSI errors decoding
-function SCSISenseDecode(ErrCode)
-	local KeySense
-	local CodeSense
-	if not ErrCode then return nil, 'ErrCod is nil' end
-	if ErrCode ~= '00000000' then
-		rl.IncludeOnce(LibFolder .. 'table_FakeSense.lua')
-		if FakeSense[ErrCode] then 
-			return FakeSense[ErrCode]
+function SCSISenseDecode(errCode)
+	local keySense
+	local codeSense
+	if not errCode then return nil, 'ErrCod is nil' end
+	if errCode ~= '00000000' then
+		rl.IncludeOnce(libFolder .. 'table_fakeSense.lua')
+		if fakeSense[errCode] then 
+			return fakeSense[errCode]
 		else
-			local Key, Code, Qualifier, FRU = string.match(ErrCode, '(%w%w)(%w%w)(%w%w)(%w%w)')
-			if Code then
-				rl.IncludeOnce(LibFolder .. 'table_SCSISense.lua')
-				KeySense = SCSISense[Key]
-				if not KeySense then return nil, 'Can\'t found sense key in SCSISense table' end
+			local key, code, qualifier, FRU = string.match(errCode, '(%w%w)(%w%w)(%w%w)(%w%w)')
+			if code then
+				rl.IncludeOnce(libFolder .. 'table_scsiSense.lua')
+				keySense = scsiSense[key]
+				if not keySense then return nil, 'Can\'t found sense key in SCSISense table' end
 			
-				CodeSense, ErrorMessage = rl.IniVal(Device.BASE_DIR .. 'SCSI_Err.ini', 'SENSE', Code .. Qualifier)
-				if not CodeSense then return nil, ErrorMessage end
+				codeSense, errorMessage = rl.IniVal(device.BASE_DIR .. 'SCSI_Err.ini', 'SENSE', code .. qualifier)
+				if not codeSense then return nil, errorMessage end
 			else return nil, 'Can\'t parse SenseCode.' end
 		end
 	else return 'No SCSI errors.' end
 	
-	return KeySense .. '    ' .. CodeSense
+	return keySense .. '    ' .. codeSense
 end
 
 -- GO!!! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
  -- Tags string deserialization.
-for Key, Value in string.gmatch(QuickDiagResult,'([^\n:]+):([^\n]+)') do
-	if Value == Value:match('%d+') then
-		Device[Key] = tonumber(Value)
+for key, value in string.gmatch(QuickDiagResult,'([^\n:]+):([^\n]+)') do
+	if value == value:match('%d+') then
+		device[key] = tonumber(value)
 	else
-		Device[Key] = Value
+		device[key] = value
 	end
 end
 
 AddDebugInfo(QuickDiagResult)
 
-if Device.STAGE_ERROR then return Device.STAGE_ERROR end
+-- Аdd the missing source tags
+device.MFGBRAND = device.MFGBRAND or 'NOTDETECTED'
+device.FAMILY = device.FAMILY or 'GNRC'
+device.FAMILY_ID = device.FAMILY_ID or 0
+device.FAMILY_GEN = device.FAMILY_GEN or 'GNRC'
 
-LibFolder = Device.BASE_DIR .. 'Scripts/lib/'
+-- End the program if there is an error in the previous stages of diagnostics
+if device.STAGE_ERROR then return device.STAGE_ERROR end
 
+-- Assigning values to auxiliary variables
+libFolder = device.BASE_DIR .. 'Scripts/lib/'
 
 -- Fill in the values of the derivate tags ======================================================================================
 
 -- Refining the model name
 do
-	if Device.PROFILE_TYPE == 'HDD_ATA' or Device.PROFILE_TYPE == 'SSD_ATA' then 
-		Device.RMODEL =  string.match(Device.MODEL,'%w+%s+(%w+-*%w*)')
+	if device.PROFILE_TYPE == 'HDD_ATA' or device.PROFILE_TYPE == 'SSD_ATA' then 
+		device.RMODEL =  string.match(device.MODEL,'%w+%s+(%w+-*%w*)')
 	end
 
-	if not Device.RMODEL then Device.RMODEL = Device.MODEL end
+	if not device.RMODEL then device.RMODEL = device.MODEL end
 end
 
-Device.FAMILY_GEN = 'GNRC'
-
 -- Filling the code name of the product family
-if Device.FAMILY_ID ~= 0 and not Device.FAMILY then
+if (device.PROFILE_TYPE == 'HDD_ATA' or device.PROFILE_TYPE == 'SSD_ATA') and device.FAMILY_ID ~= 0 then
 
-	if Device.MFGBRAND == 'SAMSUNG' then
+	if device.MFGBRAND == 'SAMSUNG' then
 	
-		rl.IncludeChunk('Scripts/lib/table_Family2ID_SAMSUNG.lua')
-		for Family, ID in pairs(Family2ID) do
+		rl.IncludeChunk('Scripts/lib/table_family2ID_SAMSUNG.lua')
+		for family, id in pairs(family2ID) do
 
-			if ID == Device.FAMILY_ID then 
-				Device.FAMILY = Family
+			if id == device.FAMILY_ID then 
+				device.FAMILY = family
 				break
 			end
 		end
 		
-	elseif Device.MFGBRAND == 'HGST' then
+	elseif device.MFGBRAND == 'HGST' then
 
-		rl.IncludeChunk('Scripts/lib/table_Family2ID_HGST.lua')
-		for Family, ID in pairs(Family2ID) do
+		rl.IncludeChunk('Scripts/lib/table_family2ID_HGST.lua')
+		for family, id in pairs(family2ID) do
 
-			if ID == Device.FAMILY_ID then 
-				Device.FAMILY = Family
+			if id == device.FAMILY_ID then 
+				device.FAMILY = family
 				break
 			end
 		end
 		
-	elseif Device.MFGBRAND == 'WDC' then
+	elseif device.MFGBRAND == 'WDC' then
 
-		Device.FAMILY = 'F' .. Device.FAMILY_ID
+		device.FAMILY = 'F' .. device.FAMILY_ID
 			
-	elseif Device.MFGBRAND == 'SEAGATE' then
+	elseif device.MFGBRAND == 'SEAGATE' then
 
-		Device.FAMILY = 'F' .. Device.FAMILY_ID
+		device.FAMILY = 'F' .. device.FAMILY_ID
 		
 	else end	
-
-elseif Device.FAMILY_ID == 0 and not Device.FAMILY then	
-	Device.FAMILY = 'GNRC'
-else 
-	ResultString = ResultString .. 'Something wrong with the family definition'
-	return ResultString
 end
 
 -- If Debug is enabled then send  additional info to output
-AddDebugInfo('RMODEL=>' .. Device.RMODEL)
-AddDebugInfo('FAMILY=>' .. Device.FAMILY)
-AddDebugInfo('FAMILY_GEN=>' .. Device.FAMILY_GEN)
+AddDebugInfo('RMODEL=>' .. device.RMODEL)
+AddDebugInfo('FAMILY=>' .. device.FAMILY)
+AddDebugInfo('FAMILY_GEN=>' .. device.FAMILY_GEN)
 
 -- preliminary cooking of the tag contents ==================================================================================================================
 
+
 -- Splitting string of SMART attributes for ATA devices-------------------------------------------------------------------------------------------------------------------------------------------
-if Device.PROFILE_TYPE == 'HDD_ATA' or Device.PROFILE_TYPE == 'SSD_ATA' then 
-	for Key, Value in pairs(Device) do
-		local SMART_ID = string.match(Key,'^ATTR_(%d+)$')
+if device.PROFILE_TYPE == 'HDD_ATA' or device.PROFILE_TYPE == 'SSD_ATA' then
+	local tmpTable = {}
+	for key, value in pairs(device) do
+		local SMART_ID = string.match(key,'^ATTR_(%d+)')
 		if SMART_ID then
-			Device['Attr' .. SMART_ID] = {}
-			Device['Attr' .. SMART_ID].Type, Device['Attr' .. SMART_ID].Value, Device['Attr' .. SMART_ID].Worst, Device['Attr' .. SMART_ID].Threshold, Device['Attr' .. SMART_ID].Raw1, Device['Attr' .. SMART_ID].Raw2, Device['Attr' .. SMART_ID].Raw3 = string.match(Value,'^(%d+),(%d+),(%d+),(%d+),(%d+)/*(%d*)/*(%d*)$')
-			for Type, AttrValue in pairs(Device['Attr' .. SMART_ID]) do
-				if AttrValue and AttrValue ~= '' then
-					Device['Attr' .. SMART_ID][Type] = tonumber(AttrValue)
+			tmpTable['attr' .. SMART_ID] = {}
+			tmpTable['attr' .. SMART_ID].type, tmpTable['attr' .. SMART_ID].value, tmpTable['attr' .. SMART_ID].worst, tmpTable['attr' .. SMART_ID].threshold, tmpTable['attr' .. SMART_ID].raw1, tmpTable['attr' .. SMART_ID].raw2, tmpTable['attr' .. SMART_ID].raw3 = string.match(value,'^(%d+),(%d+),(%d+),(%d+),(%d+)/*(%d*)/*(%d*)$')
+			for attrType, attrValue in pairs(tmpTable['attr' .. SMART_ID]) do
+				if attrValue and attrValue ~= '' then
+					tmpTable['attr' .. SMART_ID][attrType] = tonumber(attrValue)
 				end
 			end
 		end
 	end
+	for key, value in pairs(tmpTable) do device[key] = value end
 end
 
 -- Splitting of read test results-----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-if Device.TEST_RANDOM_SEEK then
-	Device.TestRandomSeek = {}
-	Device.TestRandomSeek.Status, Device.TestRandomSeek.StartLBA, Device.TestRandomSeek.StopLBA, Device.TestRandomSeek.LastLBA, Device.TestRandomSeek.SeekCount, Device.TestRandomSeek.SeekDone, Device.TestRandomSeek.ErrCode, Device.TestRandomSeek.CmdTimeMin, Device.TestRandomSeek.CmdTimeMax, Device.TestRandomSeek.CmdTimeAvg = string.match(Device.TEST_RANDOM_SEEK,'^(%w+),(%d+),(%d+),(%-?%d+),(%d+),(%d+),(%w+),(%d+),(%d+),(%d+)$')
-	if Device.TestRandomSeek.Status then 
-		tonumber(Device.TestRandomSeek.StartLBA); tonumber(Device.TestRandomSeek.StopLBA); tonumber(Device.TestRandomSeek.LastLBA); tonumber(Device.TestRandomSeek.SeekCount); tonumber(Device.TestRandomSeek.SeekDone); tonumber(Device.TestRandomSeek.CmdTimeMin); tonumber(Device.TestRandomSeek.CmdTimeMax); tonumber(Device.TestRandomSeek.CmdTimeAvg)
+if device.TEST_RANDOM_SEEK then
+	device.testRandomSeek = {}
+	device.testRandomSeek.status, device.testRandomSeek.startLBA, device.testRandomSeek.stopLBA, device.testRandomSeek.lastLBA, device.testRandomSeek.seekCount, device.testRandomSeek.seekDone, device.testRandomSeek.errCode, device.testRandomSeek.cmdTimeMin, device.testRandomSeek.cmdTimeMax, device.testRandomSeek.cmdTimeAvg = string.match(device.TEST_RANDOM_SEEK,'^(%w+),(%d+),(%d+),(%-?%d+),(%d+),(%d+),(%w+),(%d+),(%d+),(%d+)$')
+	if device.testRandomSeek.status then 
+		device.testRandomSeek.startLBA = tonumber(device.testRandomSeek.startLBA); device.testRandomSeek.stopLBA = tonumber(device.testRandomSeek.stopLBA); device.testRandomSeek.lastLBA = tonumber(device.testRandomSeek.lastLBA); device.testRandomSeek.seekCount = tonumber(device.testRandomSeek.seekCount); device.testRandomSeek.seekDone = tonumber(device.testRandomSeek.seekDone); device.testRandomSeek.cmdTimeMin = tonumber(device.testRandomSeek.cmdTimeMin); device.testRandomSeek.cmdTimeMax = tonumber(device.testRandomSeek.cmdTimeMax); device.testRandomSeek.cmdTimeAvg = tonumber(device.testRandomSeek.cmdTimeAvg)
 	end	
-	if Device.DEBUG then
+	if device.DEBUG then
 		AddDebugInfo('\nRandomSeek test results in expanded form:')
-		for Key, Value in rl.Pairs(Device.TestRandomSeek) do
-			AddDebugInfo('TestRandomSeek.' .. Key .. ' = ' .. Value)
+		for key, value in rl.Pairs(device.testRandomSeek) do
+			AddDebugInfo('TestRandomSeek.' .. key .. ' = ' .. value)
 		end
-		local SCSISenseInfo, ErrorMessage = SCSISenseDecode(Device.TestRandomSeek.ErrCode)
-		if SCSISenseInfo then AddDebugInfo('Last SCSI Sense code decoding:   ' .. SCSISenseInfo)
-		else AddDebugInfo('ERROR during last error code decoding:   ' .. ErrorMessage) end
+		local scsiSenseInfo, errorMessage = SCSISenseDecode(device.testRandomSeek.errCode)
+		if scsiSenseInfo then AddDebugInfo('Last SCSI Sense:   ' .. scsiSenseInfo)
+		else AddDebugInfo('ERROR during last error code decoding:   ' .. errorMessage) end
 	end
 end
 
-if Device.TEST_RANDOM_READ then
-	Device.TestRandomRead = {}
-	Device.TestRandomRead.Status, Device.TestRandomRead.StartLBA, Device.TestRandomRead.StopLBA, Device.TestRandomRead.LastLBA, Device.TestRandomRead.BlockSize, Device.TestRandomRead.ReadsCount, Device.TestRandomRead.ReadsDone, Device.TestRandomRead.ErrCode, Device.TestRandomRead.CmdTime, Device.TestRandomRead.TestTimeMin, Device.TestRandomRead.TestTimeMax, Device.TestRandomRead.TestTimeAvg = string.match(Device.TEST_RANDOM_READ,'^(%w+),(%d+),(%d+),(%-?%d+),(%d+),(%d+),(%d+),(%w+),(%d+),(%d+),(%d+),(%d+)$')
-	if Device.TestRandomRead.Status then 
-		tonumber(Device.TestRandomRead.StartLBA); tonumber(Device.TestRandomRead.StopLBA); tonumber(Device.TestRandomRead.LastLBA); tonumber(Device.TestRandomRead.BlockSize); tonumber(Device.TestRandomRead.ReadsCount); tonumber(Device.TestRandomRead.ReadsDone); tonumber(Device.TestRandomRead.CmdTime); tonumber(Device.TestRandomRead.TestTimeMin); tonumber(Device.TestRandomRead.TestTimeMax); tonumber(Device.TestRandomRead.TestTimeAvg)
+if device.TEST_RANDOM_READ then
+	device.testRandomRead = {}
+	device.testRandomRead.status, device.testRandomRead.startLBA, device.testRandomRead.stopLBA, device.testRandomRead.lastLBA, device.testRandomRead.blockSize, device.testRandomRead.readsCount, device.testRandomRead.readsDone, device.testRandomRead.errCode, device.testRandomRead.cmdTime, device.testRandomRead.testTimeMin, device.testRandomRead.testTimeMax, device.testRandomRead.testTimeAvg = string.match(device.TEST_RANDOM_READ,'^(%w+),(%d+),(%d+),(%-?%d+),(%d+),(%d+),(%d+),(%w+),(%d+),(%d+),(%d+),(%d+)$')
+	if device.testRandomRead.status then 
+		device.testRandomRead.startLBA = tonumber(device.testRandomRead.startLBA); device.testRandomRead.stopLBA = tonumber(device.testRandomRead.stopLBA); device.testRandomRead.lastLBA = tonumber(device.testRandomRead.lastLBA); device.testRandomRead.blockSize = tonumber(device.testRandomRead.blockSize); device.testRandomRead.readsCount = tonumber(device.testRandomRead.readsCount); device.testRandomRead.readsDone = tonumber(device.testRandomRead.readsDone); device.testRandomRead.cmdTime = tonumber(device.testRandomRead.cmdTime); device.testRandomRead.testTimeMin = tonumber(device.testRandomRead.testTimeMin); device.testRandomRead.testTimeMax = tonumber(device.testRandomRead.testTimeMax); device.testRandomRead.testTimeAvg = tonumber(device.testRandomRead.testTimeAvg)
 	end
-	if Device.DEBUG then
+	if device.DEBUG then
 		AddDebugInfo('\nRandomRead test results in expanded form:')
-		for Key, Value in rl.Pairs(Device.TestRandomRead) do
-			AddDebugInfo('TestRandomRead ' .. Key .. ' = ' .. Value)
+		for key, value in rl.Pairs(device.testRandomRead) do
+			AddDebugInfo('TestRandomRead ' .. key .. ' = ' .. value)
 		end
-		local SCSISenseInfo, ErrorMessage = SCSISenseDecode(Device.TestRandomRead.ErrCode)
-		if SCSISenseInfo then AddDebugInfo('Last SCSI Sense code decoding:   ' .. SCSISenseInfo)
-		else AddDebugInfo('ERROR during last error code decoding:   ' .. ErrorMessage) end
+		local scsiSenseInfo, errorMessage = SCSISenseDecode(device.testRandomRead.errCode)
+		if scsiSenseInfo then AddDebugInfo('Last SCSI Sense:   ' .. scsiSenseInfo)
+		else AddDebugInfo('ERROR during last error code decoding:   ' .. errorMessage) end
 	end
 end
 
-function DDDSplit(TestName, TagVal)
-	if TagVal then
-		local Table = {}
-		Table.Status, Table.StartLBA, Table.StopLBA, Table.BlockSize, Table.ErrCount, Table.ErrCode, Table.TestTime = string.match(TagVal,'^(%w+),(%d+),(%d+),(%d+),(%d+),(%w+),(%d+)$')
-		if Table.Status then 
-			tonumber(Table.StartLBA); tonumber(Table.StopLBA); tonumber(Table.BlockSize); tonumber(Table.ErrCount); tonumber(Table.TestTime)
+function DDDSplit(testName, tagVal)
+	if tagVal then
+		local table = {}
+		table.status, table.startLBA, table.stopLBA, table.blockSize, table.errCount, table.errCode, table.testTime = string.match(tagVal,'^(%w+),(%d+),(%d+),(%d+),(%d+),(%w+),(%d+)$')
+		if table.status then 
+			table.startLBA = tonumber(table.startLBA); table.stopLBA = tonumber(table.stopLBA); table.blockSize = tonumber(table.blockSize); table.errCount = tonumber(table.errCount); table.testTime = tonumber(table.testTime)
 		end
-		if Device.DEBUG then
-			AddDebugInfo('\n' .. TestName ..' test results in expanded form:')
-			for Key, Value in rl.Pairs(Table) do
-				AddDebugInfo(TestName .. ' ' .. Key .. ' = ' .. Value)
+		if device.DEBUG then
+			AddDebugInfo('\n' .. testName ..' test results in expanded form:')
+			for key, value in rl.Pairs(table) do
+				AddDebugInfo(testName .. ' ' .. key .. ' = ' .. value)
 			end
-			local SCSISenseInfo, ErrorMessage = SCSISenseDecode(Table.ErrCode)
-			if SCSISenseInfo then AddDebugInfo('Last SCSI Sense code decoding:   ' .. SCSISenseInfo)
-			else AddDebugInfo('ERROR during last error code decoding:   ' .. ErrorMessage) end
+			local scsiSenseInfo, errorMessage = SCSISenseDecode(table.errCode)
+			if scsiSenseInfo then AddDebugInfo('Last SCSI Sense:   ' .. scsiSenseInfo)
+			else AddDebugInfo('ERROR during last error code decoding:   ' .. errorMessage) end
 		end
-	return Table
+	return table
 	end
 end 
 
-Device.TestReadOD = DDDSplit('TestReadOD', Device.TEST_READ_OD)
-Device.TestReadMD = DDDSplit('TestReadMD', Device.TEST_READ_MD)
-Device.TestReadID = DDDSplit('TestReadID', Device.TEST_READ_ID)
+device.testReadOD = DDDSplit('TestReadOD', device.TEST_READ_OD)
+device.testReadMD = DDDSplit('TestReadMD', device.TEST_READ_MD)
+device.testReadID = DDDSplit('TestReadID', device.TEST_READ_ID)
 
 AddDebugInfo('\n')
 
@@ -228,56 +229,120 @@ AddDebugInfo('\n')
 
 --  Search and load an appropriate library---------------------------------------------------------------------------------------------------------------------------
 do
-	function LibExists(LibName)
-		local FileName = LibFolder .. '/' .. LibName .. '.lua'
-		local f=io.open(FileName,"r")
-		if f~=nil then io.close(f) return FileName else return false end
+	function LibExists(libName)
+		local fileName = libFolder .. libName .. '.lua'
+		if rl.FileExists(fileName) then return fileName else return false end
 	end
 
-	LibFileName = LibExists(Device.PROFILE_TYPE .. '_' .. Device.MFGBRAND  .. '_' .. Device.RMODEL .. '_' .. Device.FWVER) 
-				or LibExists(Device.PROFILE_TYPE .. '_' .. Device.MFGBRAND  .. '_' .. Device.RMODEL) 
---				or LibExists(Device.PROFILE_TYPE .. '_' .. Device.MFGBRAND  .. '_' .. Device.FAMILY) 
-				or LibExists(Device.PROFILE_TYPE .. '_' .. Device.MFGBRAND) 
-				or LibExists(Device.PROFILE_TYPE)
+	libFileName = LibExists(device.PROFILE_TYPE .. '_' .. device.MFGBRAND  .. '_' .. device.RMODEL .. '_' .. device.FWVER) 
+				or LibExists(device.PROFILE_TYPE .. '_' .. device.MFGBRAND  .. '_' .. device.RMODEL) 
+--				or LibExists(device.PROFILE_TYPE .. '_' .. device.MFGBRAND  .. '_' .. device.FAMILY) 
+				or LibExists(device.PROFILE_TYPE .. '_' .. device.MFGBRAND) 
+				or LibExists(device.PROFILE_TYPE)
 				
-	if not LibFileName then 
-		ErrorMessage = 'Can\'t found any lib file for this device.\n\n'
-		return ErrorMessage .. '\n\n' .. ResultString .. DebugInfo
+	if not libFileName then 
+		errorMessage = 'Can\'t found any lib file for this device.\n\n'
+		return errorMessage .. '\n\n' .. resultString .. debugInfo
 	else 
-		if Device.DEBUG then ResultString = 'Loaded library file ' .. LibFileName .. '\n' .. ResultString  end
+		if device.DEBUG then resultString = 'Loaded library file ' .. libFileName .. '\n' .. resultString  end
 	end
 end
 
-Success, ErrorMessage = rl.ProtectedLoad(LibFileName)
+success, errorMessage = rl.ProtectedLoad(libFileName)
 
 -- Perform diagnostic functions ---------------------------------------------------------------------------------------------------------------------------
-if Success then
-	for DiagRuleName in pairs(Device.Diag) do 
-		Success, ErrorMessage = pcall(Device.Diag[DiagRuleName])
-		if Success then
-			AddDebugInfo('Run ' .. DiagRuleName .. ' function from library '.. Device.RegList[DiagRuleName] .. '.')
+if success then
+	for diagRuleName in pairs(device.diag) do 
+		success, errorMessage = pcall(device.diag[diagRuleName])
+		if success then
+			AddDebugInfo('Run ' .. diagRuleName .. ' function from library '.. device.regRulesList[diagRuleName] .. '.')
 		else 
-			return 'Error in the function ' ..  DiagRuleName .. ' from library '.. Device.RegList[DiagRuleName] .. ':\n' .. ErrorMessage .. '\n\n' .. ResultString .. DebugInfo
+			return 'Error in the function ' ..  diagRuleName .. ' from library '.. device.regRulesList[diagRuleName] .. ':\n' .. errorMessage .. '\n\n' .. resultString .. debugInfo
 		end
 	end
 else
-    return ErrorMessage .. '\n\n' .. ResultString .. DebugInfo
+    return errorMessage .. '\n\n' .. resultString .. debugInfo
 end
 
 -- Calling methods, which describe malfunctions ---------------------------------------------------------------------------------------------------------------------------
 
-for DiagResultName in pairs(Device.Bad) do
-	local Verdict = Device.Bad[DiagResultName]:Verdict()
-	if Verdict then Diagnosis = Diagnosis .. Verdict end
+local malfunctionDetected = false
+for diagResultName in pairs(device.fail) do
+	local verdict = device.fail[diagResultName]:Verdict()
+	if verdict then diagnosis = diagnosis .. verdict end
+	if not malfunctionDetected then 
+		malfunctionDetected = device.fail[diagResultName]:MalfunctionDetected() 
+	end	
 end
 
 -- Formatting output---------------------------------------------------------------------------------------------------------------------------------------------
 
-if Diagnosis and Diagnosis ~= '\n' then ResultString = ResultString .. Diagnosis end
-if Explanation and Explanation ~= '\n' then ResultString = ResultString .. '\n<===<EXPLANATION>===>' .. Explanation end
-if Warning and Warning ~= '\n' then ResultString = ResultString .. '\n!!! WARNING !!!' .. Warning end
-if Device.DBG_CONTAINER then ResultString = '+++CONTEINER VIEWING MODE+++\n' .. ResultString .. '\n###STORED INFORMATION###\n' .. QuickDiagResult end
-if Device.DEBUG then ResultString = '***DEBUG MODE***\n' .. ResultString .. '\n###DEBUG INFO###\n' .. DebugInfo end
+local intro
+local finally
 
-return ResultString
+
+
+if not device.DEBUG then
+	if  device.NOTDETECTED then	
+		if malfunctionDetected then
+			intro = rl.Loc('На основе предоставленных данных, можно предположить следующий характер \nнеисправности:')
+			finally = rl.Loc('')
+			if string.find(device.PROFILE_TYPE, 'HDD') then 		
+				finally = finally .. rl.Loc('Для уточнения диагноза и восстановления данных, рекомендуем обратиться \nк специалистам, обладающим соответствующим опытом и специальным \nоборудованием, таким как комплекс PC-3000.')
+			end
+		else
+			intro = rl.Loc('Предоставленных данных не достаточно для определения характера \nнеисправности.')
+			if string.find(device.PROFILE_TYPE, 'HDD') then 		
+				finally = rl.Loc('Для предположения типа неисправности жесткого диска, ключевое значение \nимеют издаваемые устройством звуки. Уделите пожалуйста особое внимание \nэтому пункту анкеты.')
+			end
+		end		
+	else
+		if malfunctionDetected then
+			intro = rl.Loc('Обнаружены признаки аппаратной неисправности:')
+			finally = rl.Loc('Для уточнения диагноза и восстановления данных, рекомендуем обратиться к специалистам, обладающим \nсоответствующим опытом и специальным оборудованием, таким как комплекс PC-3000.')
+		else
+			if string.find(device.PROFILE_TYPE, 'HDD') and device.FORM_DATA_IMPORTANCE == 'CRITICAL' and device.FORM_MECHANICAL_SHOCK == 'YES' then
+				intro = rl.Loc('При подозрениях наличия механических повреждений, в случае кртически \nважных данных, диагностика не выполняется.')
+				finally = rl.Loc('В подобных случаях работа с жестким диском без предварительного изучения \nсостояния блока головок, может привести к уменьшению шансов успешного \nвосстановления. Рекомендуем отключить питание накопителя и обратиться к \nспециалистам.')
+			else
+				intro = rl.Loc('Признаков аппаратных неисправностей не выявлено.')
+				finally = rl.Loc('Если данные на накопителе недоступны, это может указывать на повреждения \nтаблицы разделов или файловой системы. В таком случае воспользуйтесь \nпрограммами для восстановления данных, например UFS Explorer или R.saver\n(бесплатная версия UFS Explorer для FAT, NTFS, exFAT).')
+			end
+		end		
+	end
+	finally = finally .. '\n\n' .. rl.Loc([[
+Точная диагностика требует наличия специального оборудования и действий,
+для выполнения которых нужен соответствующий опыт. 
+
+Процедура автоматической диагностики предназначена для быстрой оценки 
+состояния устройства и примерного определения характера неисправности:
+
+o	Точность диагноза может варьироваться от 30% до 100% 
+	в зависимости от модели устройства и типа неисправности.
+	
+o	Логика алгоритма отталкивается от того, что пользователь 
+	наблюдает неполадки в работе устройства, и стоит задача 
+	определения неисправности, которая их вызвала.
+	
+o	Доступ к накопителям в технологическом режиме не используется.
+
+Помните, что любые манипуляции с физически неисправным носителем могут 
+привести к ухудшению его состояния. Поэтому, в случае потери критически
+важных данных, обращайтесь к специалистам сразу.
+]])
+end
+
+if intro and intro ~= '\n' then resultString = resultString .. intro .. '\n' end
+if diagnosis and diagnosis ~= '\n' then resultString = resultString .. diagnosis end
+if explanation and explanation ~= '\n' then resultString = resultString .. '\n' .. rl.Loc('<===< EXPLANATION >===>') .. explanation end
+if warning and warning ~= '\n' then resultString = resultString .. '\n' ..  rl.Loc('!!! WARNING !!!') .. warning end
+if finally and finally ~= '\n' then resultString = resultString  .. '\n' .. finally .. '\n' end
+
+
+
+
+if device.DBG_CONTAINER then resultString = '+++CONTEINER VIEWING MODE+++\n' .. resultString .. '\n###STORED INFORMATION###\n' .. QuickDiagResult end
+if device.DEBUG then resultString = '***DEBUG MODE***\n' .. resultString .. '\n###DEBUG INFO###\n' .. debugInfo end
+
+return resultString
 

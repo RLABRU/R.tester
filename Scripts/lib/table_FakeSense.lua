@@ -1,5 +1,5 @@
 -- Fake Sense codes that complement original codes.
-FakeSense  = {
+fakeSense  = {
 -- Request aborted by R.tester core -----------------
 ['0DEFC0DE'] = 'Request aborted by R.tester core — OFFLINE MODE',
 ['07270000'] = 'Request aborted by R.tester core — WRITE PROTECTION ACTIVE',

@@ -1,4 +1,4 @@
-SCSISense = {
+scsiSense = {
 ['00'] = 'NO ERRORS',
 ['01'] = 'RECOVERED',
 ['02'] = 'NOT READY',
@@ -15,4 +15,4 @@ SCSISense = {
 ['0D'] = '<KEY NOT USED>',
 ['0E'] = 'MISCOMPARE',
 ['0F'] = '<KEY NOT USED>'
- }
+}

@@ -2,38 +2,44 @@
 
 -- Definition of root Malfunction class
 
-Device.MalfunctionClass = {} 
-  function Device.MalfunctionClass:new(MalfunctionName) 
+device.malfunctionClass = {} 
+  function device.malfunctionClass:New(malfunctionName) 
 	local obj = {}
-	obj.MalfunctionName = MalfunctionName
-    obj.HighProbabilityCounter = 0
-    obj.ProbabilityCounter = 0
-    obj.LowProbabilityCounter = 0
+	obj.malfunctionName = malfunctionName
+    obj.highProbabilityCounter = 0
+    obj.probabilityCounter = 0
+    obj.lowProbabilityCounter = 0
     
     setmetatable(obj, self)
     self.__index = self
     return obj   
   end
   
-function Device.MalfunctionClass:HighProbability() self.HighProbabilityCounter = self.HighProbabilityCounter + 1 end
-function Device.MalfunctionClass:Probability() self.ProbabilityCounter = self.ProbabilityCounter + 1 end
-function Device.MalfunctionClass:LowProbability() self.LowProbabilityCounter = self.LowProbabilityCounter + 1 end
+function device.malfunctionClass:HighProbability() self.highProbabilityCounter = self.highProbabilityCounter + 1 end
+function device.malfunctionClass:Probability() self.probabilityCounter = self.probabilityCounter + 1 end
+function device.malfunctionClass:LowProbability() self.lowProbabilityCounter = self.lowProbabilityCounter + 1 end
   
-function Device.MalfunctionClass:Verdict()
-	if self.HighProbabilityCounter ~= 0 or self.ProbabilityCounter ~= 0 or self.LowProbabilityCounter ~= 0 then
+function device.malfunctionClass:Verdict()
+	if self.highProbabilityCounter ~= 0 or self.probabilityCounter ~= 0 or self.lowProbabilityCounter ~= 0 then
 		local Verdict = ""
-		if self.HighProbabilityCounter ~= 0 then 
-			Verdict = Verdict .. ' ' .. self.HighProbabilityCounter .. ' ' .. rl.Loc('sign(s) point to a high probability of') .. ' ' .. rl.Loc(self.MalfunctionName) .. '.\n'
+		if self.highProbabilityCounter ~= 0 then 
+			Verdict = Verdict .. ' ' .. self.highProbabilityCounter .. ' ' .. rl.Loc(rl.Plural('sign indicates', 'signs indicate', self.highProbabilityCounter)) .. ' ' .. rl.Loc('a high probability of') .. ' ' .. rl.Loc(self.malfunctionName) .. '.\n'
 		end
-		if self.ProbabilityCounter ~= 0 then 
-			Verdict = Verdict .. ' ' .. self.ProbabilityCounter .. ' ' .. rl.Loc('sign(s) point to a probability of') .. ' ' .. rl.Loc(self.MalfunctionName) .. '.\n'
+		if self.probabilityCounter ~= 0 then 
+			Verdict = Verdict .. ' ' .. self.probabilityCounter .. ' ' .. rl.Loc(rl.Plural('sign indicates', 'signs indicate', self.probabilityCounter)) .. ' ' .. rl.Loc('a probability of') .. ' ' .. rl.Loc(self.malfunctionName) .. '.\n'
 		end
-		if self.LowProbabilityCounter ~= 0 then 
-			Verdict = Verdict .. ' ' .. self.LowProbabilityCounter .. ' ' .. rl.Loc('sign(s) point to a low probability of') .. ' ' .. rl.Loc(self.MalfunctionName) .. '.\n'
+		if self.lowProbabilityCounter ~= 0 then 
+			Verdict = Verdict .. ' ' .. self.lowProbabilityCounter .. ' ' .. rl.Loc(rl.Plural('sign indicates', 'signs indicate', self.lowProbabilityCounter)) .. ' ' .. rl.Loc('a low probability of') .. ' ' .. rl.Loc(self.malfunctionName) .. '.\n'
 		end
 		return Verdict
 	else return nil end       
 end
   
-
+function device.malfunctionClass:MalfunctionDetected()
+	if self.highProbabilityCounter == 0 and self.probabilityCounter == 0 then
+		return false
+	else
+		return true
+	end
+end
   

@@ -1,63 +1,61 @@
 --[[ Vendor, family and generation clarification
   ]]
 
-Device = {}
-LOut = {}
+rl = require('rl')
+ 
+device = {}
+lOut = {}
 
 -- Fill in the tag table
-for Tag, Value in string.gmatch(DeviceInfoForBrand,'([^\n:]+):([^\n]+)') do
-	Device[Tag] = Value
+for tag, value in string.gmatch(DeviceInfoForBrand,'([^\n:]+):([^\n]+)') do
+	device[tag] = value
 end
 
-LibFolder = Device.BASE_DIR .. 'Scripts/lib/'
-
+libFolder = device.BASE_DIR .. 'Scripts/lib/'
+debugLogFile = device.BASE_DIR .. 'Logs/DebugOut_sys_OnDetectBrand.txt'
 
 -- Set debug output
-if Device.DEBUG then 
-	io.output(Device.BASE_DIR .. 'Logs/DebugOut_sys_OnDetectBrand.txt') 
-end
-
-function DebugOut(String)
-	if Device.DEBUG then 
-		io.write (String .. '\n')
-	end
-end
+DebugOut = rl.CreateDebugLogFunc(debugLogFile)
 
 DebugOut(DeviceInfoForBrand)
 
-
 -- Load external chunk function
-function IncludeChunk(FileName)
-	dofile(LibFolder .. FileName)
+function IncludeChunk(fileName)
+	dofile(libFolder .. fileName)
 end
-
--- Fill in Brand2ID table
-IncludeChunk('table_Brand2ID.lua')
 
 -- Set initial values
 
-Device.FAMILY_ID = Device.FAMILY_ID or 0
-Device.FAMILY_GEN_ID = Device.FAMILY_GEN_ID or 0
+device.PROFILE_TYPE = device.PROFILE_TYPE or 'NOTPASSED'
+device.MFGBRAND = device.MFGBRAND or 'NOTPASSED'
+device.MODEL = device.MODEL or 'NOTPASSED'
 
-Device.FAMILY = Device.FAMILY or 'GNRC'
-Device.FAMILY_GEN = Device.FAMILY_GEN or 'GNRC'
+device.FAMILY_ID = device.FAMILY_ID or 0
+device.FAMILY_GEN_ID = device.FAMILY_GEN_ID or 0
+
+device.FAMILY = device.FAMILY or 'GNRC'
+device.FAMILY_GEN = device.FAMILY_GEN or 'GNRC'
+
+
+-- Fill in brand2ID table
+IncludeChunk('table_brand2ID.lua')
 
 -- Refining the model name
 do
-	if Device.PROFILE_TYPE == 'HDD_ATA' or Device.PROFILE_TYPE == 'SSD_ATA' then 
-		Device.RMODEL =  string.match(Device.MODEL,'%w+%s+(%w+-*%w*)')
+	if device.PROFILE_TYPE == 'HDD_ATA' or device.PROFILE_TYPE == 'SSD_ATA' then 
+		device.RMODEL =  string.match(device.MODEL,'%w+%s+(%w+-*%w*)')
 	end
 
-	if not Device.RMODEL then Device.RMODEL = Device.MODEL end
+	if not device.RMODEL then device.RMODEL = device.MODEL end
 end
 
 -- ====================BRAND DETECTION=================================================================================================
 
 -- Based on the model name in general case, when brand is unknown.
-if Device.MFGBRAND == 'UNKNOWN' then
-	for Brand, ID in pairs(Brand2ID) do
-		if Device.MODEL:match(Brand) then
-			Device.MFGBRAND = Brand
+if device.MFGBRAND == 'UNKNOWN' or device.MFGBRAND == 'NOTPASSED' then
+	for brand, ID in pairs(brand2ID) do
+		if device.MODEL:match(brand) then
+			device.MFGBRAND = brand
 			break
 		end
 	end
@@ -66,53 +64,54 @@ end
 
 
 -- TEST Identifying of SAMSUNG among SEAGATE
-if Device.MFGBRAND == 'SEAGATE' and Device.FWVER:find('^2A[RC].....$')  then Device.MFGBRAND = 'SAMSUNG' end
+if device.MFGBRAND == 'SEAGATE' and device.FWVER:find('^2A[RC].....$')  then device.MFGBRAND = 'SAMSUNG' end
 
 
 
 -- ====================FAMILY DETECTION=================================================================================================
+if device.PROFILE_TYPE == 'HDD_ATA' or device.PROFILE_TYPE == 'SSD_ATA' then
+	if device.MFGBRAND == 'SAMSUNG' then
 
-if Device.MFGBRAND == 'SAMSUNG' then
-
-	IncludeChunk('table_Model2Family_SAMSUNG.lua')
-	if Model2Family[Device.RMODEL] then		
-		Device.FAMILY = Model2Family[Device.RMODEL]
-	end
-
-	IncludeChunk('table_FW2Family_SAMSUNG.lua')		
-	for FWPattern, Family in pairs(FW2Family) do
-		if Device.FWVER:match(FWPattern) then
-			Device.FAMILY = Family
-			break
+		IncludeChunk('table_model2Family_SAMSUNG.lua')
+		if model2Family[device.RMODEL] then		
+			device.FAMILY = model2Family[device.RMODEL]
 		end
-	end
+
+		IncludeChunk('table_fw2Family_SAMSUNG.lua')		
+		for fwPattern, family in pairs(fw2Family) do
+			if device.FWVER:match(fwPattern) then
+				device.FAMILY = family
+				break
+			end
+		end
 	
-	if Device.FAMILY then 
-		IncludeChunk('table_Family2ID_SAMSUNG.lua')
-		Device.FAMILY_ID = Family2ID[Device.FAMILY]
-	end	
+		if device.FAMILY then 
+			IncludeChunk('table_family2ID_SAMSUNG.lua')
+			device.FAMILY_ID = family2ID[device.FAMILY]
+		end	
 
-elseif Device.MFGBRAND == 'SEAGATE' then
+	elseif device.MFGBRAND == 'SEAGATE' then
 	
-elseif Device.MFGBRAND == 'HGST' then
+	elseif device.MFGBRAND == 'HGST' then
 
-	IncludeChunk('table_Model2Family_HGST.lua')	
-	if Model2Family[Device.RMODEL] then	
-		Device.FAMILY = Model2Family[Device.RMODEL]
-		IncludeChunk('table_Family2ID_HGST.lua')
-		Device.FAMILY_ID = Family2ID[Device.FAMILY]	
-	end
+		IncludeChunk('table_model2Family_HGST.lua')	
+		if model2Family[device.RMODEL] then	
+			device.FAMILY = model2Family[device.RMODEL]
+			IncludeChunk('table_family2ID_HGST.lua')
+			device.FAMILY_ID = family2ID[device.FAMILY]	
+		end
 
-elseif Device.MFGBRAND == 'WDC' then
+	elseif device.MFGBRAND == 'WDC' then
 
-elseif Device.MFGBRAND == 'TOSHIBA' then
+	elseif device.MFGBRAND == 'TOSHIBA' then
 
-else end
+	else end
+end
 
 --===================GENERATION DETECTION==========================================================================================
 --[[
 -- wxWidgets test
-package.cpath = package.cpath .. ';' .. Device.BASE_DIR .. 'wx.dll'
+package.cpath = package.cpath .. ';' .. device.BASE_DIR .. 'wx.dll'
 local wx = require('wx')
 
 -- создаем фрейм размером 200x200 с заголовком Hello wxLua
@@ -137,21 +136,23 @@ iup.Message('YourApp','Finished Successfully!')
 ]]
 
 -- Check for the case, when no such brand in the table
-if Brand2ID[Device.MFGBRAND] then
-	Device.BRAND_ID = Brand2ID[Device.MFGBRAND]
+if brand2ID[device.MFGBRAND] then
+	device.BRAND_ID = brand2ID[device.MFGBRAND]
 else
-	Device.BRAND_ID = 0
+	device.BRAND_ID = 0
 end
 
 --========================================================================================================================================
-LOut.RMODEL = Device.RMODEL
+lOut.RMODEL = device.RMODEL
 
-LOut.BRAND_ID = Device.BRAND_ID
-LOut.FAMILY_ID = Device.FAMILY_ID
-LOut.FAMILY_GEN_ID = Device.FAMILY_GEN_ID
+lOut.BRAND_ID = device.BRAND_ID
+lOut.FAMILY_ID = device.FAMILY_ID
+lOut.FAMILY_GEN_ID = device.FAMILY_GEN_ID
 
-LOut.MFGBRAND = Device.MFGBRAND
-LOut.FAMILY = Device.FAMILY
-LOut.FAMILY_GEN = Device.FAMILY_GEN
+lOut.MFGBRAND = device.MFGBRAND
+lOut.FAMILY = device.FAMILY
+lOut.FAMILY_GEN = device.FAMILY_GEN
 
-return Device.BRAND_ID .. ',' .. Device.FAMILY_ID .. ',' .. Device.FAMILY_GEN_ID
+DebugOut( '\nBRAND_ID: ' .. device.BRAND_ID .. ', ' .. 'FAMILY_ID: ' .. device.FAMILY_ID .. ', ' .. 'FAMILY_GEN_ID: ' .. device.FAMILY_GEN_ID)
+
+return device.BRAND_ID .. ',' .. device.FAMILY_ID .. ',' .. device.FAMILY_GEN_ID

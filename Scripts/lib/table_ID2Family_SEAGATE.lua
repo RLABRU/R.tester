@@ -1,5 +1,5 @@
 
-ID2Family = {
+id2Family = {
 [2] = 'GalileoPlus',
 [5] = 'Casper',
 [6] = 'Mercury2',
