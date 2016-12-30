@@ -1,5 +1,6 @@
 *
 !*.lua
+!*/
 !/.gitignore
 !/README.md
 
